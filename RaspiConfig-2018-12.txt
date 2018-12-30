@@ -1,0 +1,155 @@
+
+Install Raspi Zero with Rasbian
+2018-11-13-raspbian-stretch-lite.img
+
+Follow the installation guide on raspberry.org for this.
+
+Boot, login and start
+sudo raspi-config
+to configure the network, enable ssh, change the keyboard layout and timezone, set a hostname ...
+
+And for the serial console:
+The serial login shell is disabled                       │ 
+The serial interface is enabled 
+If you don't do this settings you'll run into problems with gpsd!
+
+
+After network is connected update raspi-config.
+Finalyse the config and reboot.
+
+
+To be faster you can do the installation of the packets and updates also an a Raspi 2B+.
+The prepared SD card should also run in the Raspi Zero.
+But you need to run the rpi-update on the Raspi Zero later.
+
+
+Login again and run
+sudo apt-get update
+sudo apt-get dist-upgrade
+sudo rpi-update
+
+Reboot the Raspi and connect via ssh.
+
+Install the following packets:
+sudo apt-get install minicom
+sudo apt-get install vim
+sudo apt-get install chrony
+sudo apt-get install python3-rpi.gpio
+sudo apt-get install python3-pip --fix-missing
+
+pip3 install --upgrade distribute
+pip3 install --upgrade RPi.GPIO
+
+
+Install gpsd version 3.17-5_armhf.
+For this you need the following packets:
+gpsd_3.17-5_armhf.deb
+gpsd-clients_3.17-5_armhf.deb
+libgps23_3.17-5_armhf.deb
+python-gps_3.17-5_armhf.deb
+You should find them somewhere in the Internet.
+
+It needs to be the version 3.17-5 because of problems with chrony.
+
+sudo apt install ./libgps23_3.17-5_armhf.deb
+sudo apt install ./gpsd_3.17-5_armhf.deb
+sudo apt install ./gpsd-clients_3.17-5_armhf.deb
+sudo apt install ./python-gps_3.17-5_armhf.deb
+
+#############
+
+From here you need the Raspi Zero or the Raspi you want to use!
+
+Configure the serial port:
+sudo stty -F /dev/serial0 raw 9600 cs8 clocal -cstopb
+
+and test:
+sudo cat /dev/serial0
+
+If the GPS module is allready connected, you should see NMEA output.
+
+###########
+
+Remove the gpsd.socket implemented from the Debian packet:
+sudo systemctl stop gpsd.socket
+sudo systemctl disable gpsd.socket
+
+Configure gpsd:
+sudo gpsd /dev/serial0 -n -F /var/run/gpsd.sock
+
+Running?
+ps -ef | grep gps
+
+#sudo chmod a+r /var/run/gpsd.sock
+#sudo chmod a+w /var/run/gpsd.sock
+
+and test: cgps
+
+
+To start gpsd during boot edit the config file:
+
+Config-File: /etc/default/gpsd
+
+START_DAEMON="true"
+USBAUTO="true"
+DEVICES="/dev/serial0"
+GPSD_OPTIONS="-n -F /var/run/gpsd.sock"
+
+Test the startscript:
+sudo /etc/init.d/gpsd start
+
+Running?
+ps -ef | grep gps
+
+
+... and stop:
+sudo /etc/init.d/gpsd stop
+
+
+To have this persistent:
+sudo update-rc.d gpsd defaults
+
+and because of a bug in Rasbian you need to run this also: 
+sudo ln -s /lib/systemd/system/gpsd.service /etc/systemd/system/multi-user.target.wants/
+
+#######################
+
+Configure the sync of the system time with GPS:
+
+Remove the ntp config from DHCP:
+sudo rm /lib/dhcpcd/dhcpcd-hooks/50-ntp.conf
+sudo rm /var/lib/ntp/ntp.conf.dhcp
+
+Only you've done this the config is taken from /etc/chrony/chrony.conf
+
+Edit:
+sudo vi /etc/chrony/chrony.conf
+
+and add:
+# SHM0 from gpsd is the NEMA data at 4800bps, so is not very accurate 
+refclock SHM 0 delay 0.5 refid NEMA 
+
+
+It should also run with SOCK:
+# SOCK protocol also includes PPS data and 
+# it also provides time within a few ns 
+refclock SOCK /var/run/chrony.ttyS0.sock delay 0.0 refid SOCK
+
+gpsd expects the name of SOCK, so don't change it!
+I had problems get the SOCK running, so I use SHM.
+Maybe in a later update...
+
+#######################
+
+Now copy GPStracker_start.sh and piGPStracker.py to /home/pi/.
+Start GPStracker_start.sh at boot.
+
+
+
+
+
+
+
+
+
+
