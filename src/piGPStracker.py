@@ -19,19 +19,7 @@ def LED_on_off(LED, switch_state):
         print('wrong fuction call!!!')
 
 
-def LED_blink(LED):
-    t = threading.currentThread()
-    while True:
-        while getattr(t, "do_run", True):
-            GPIO.output(LED, GPIO.HIGH)
-            time.sleep(.5)
-            GPIO.output(LED, GPIO.LOW)
-            time.sleep(1)
-        # Stopping if do_run is False
-        GPIO.output(LED, GPIO.LOW)
-
-
-# Funktion to check GPS link
+# Funktion to check GPS fix
 def check_GPSfix():
     packet = gpsd.get_current()
     if packet.mode > 1:
@@ -166,6 +154,8 @@ GPIO.output(16, GPIO.LOW) # py-script LED off
 GPIO.output(7, GPIO.LOW) # gpxlogger LED off
 print('GPIO setup done.\n')
 
+t = GPIO.PWM(12, 5) # Error LED blink with 5Hz
+
 # Connect to the local gpsd
 gpsd.connect()
 
@@ -173,13 +163,13 @@ gpsd.connect()
 #
 # wait until GPS fix is done:
 print('wait for GPS fix ...')
-t = threading.Thread(target=LED_blink, args=(errorLED,))
 if check_GPSfix() == False:
-    t.start()
+    t.start(30)
 while check_GPSfix() == False:
     time.sleep(2)
 print('GPS fix!')
-t.do_run = False
+t.stop()
+LED_on_off(errorLED,0)
 
 # Make sure gpxlogger is not running
 print('make sure gpxlogger is not running...')
@@ -216,7 +206,7 @@ GPIO.add_event_detect(25, GPIO.RISING, bouncetime=500)
 print("Press shutdown button 5 seconds for shutdown, 2 seconds to stop program ...")
 print('or start gpxlogger ... \n')
 
-while 1:
+while True:
     try:
         # this event controls the gpxlogger
         if GPIO.event_detected(24):
@@ -231,13 +221,16 @@ while 1:
 
         if check_GPSfix() == False:
             # ErrorLED blink
-            t.do_run = True
+            t.start(30) # LED doesn't blink here. Need a check!
         else:
             # ErrorLED dark
-            t.do_run = False
+            t.stop()
+            LED_on_off(errorLED,0)
+        time.sleep(2) # to keep CPU utilisation low
 
     except KeyboardInterrupt:
         print("--KeyboardInterupt--")
         GPIO.cleanup()
         break
+
 

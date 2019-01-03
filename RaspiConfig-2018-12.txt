@@ -39,6 +39,7 @@ sudo apt-get install python3-pip --fix-missing
 
 pip3 install --upgrade distribute
 pip3 install --upgrade RPi.GPIO
+pip3 install gpsd-py3
 
 
 Install gpsd version 3.17-5_armhf.
