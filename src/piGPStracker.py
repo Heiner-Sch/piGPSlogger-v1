@@ -164,12 +164,11 @@ gpsd.connect()
 # wait until GPS fix is done:
 print('wait for GPS fix ...')
 if check_GPSfix() == False:
-    t.start(30)
+    t.start(40)
 while check_GPSfix() == False:
     time.sleep(2)
 print('GPS fix!')
-t.stop()
-LED_on_off(errorLED,0)
+t.ChangeDutyCycle(0) # errorLED off
 
 # Make sure gpxlogger is not running
 print('make sure gpxlogger is not running...')
@@ -221,15 +220,15 @@ while True:
 
         if check_GPSfix() == False:
             # ErrorLED blink
-            t.start(30) # LED doesn't blink here. Need a check!
+            t.ChangeDutyCycle(40)
         else:
             # ErrorLED dark
-            t.stop()
-            LED_on_off(errorLED,0)
+            t.ChangeDutyCycle(0)
         time.sleep(2) # to keep CPU utilisation low
 
     except KeyboardInterrupt:
         print("--KeyboardInterupt--")
+        t.stop()
         GPIO.cleanup()
         break
 
